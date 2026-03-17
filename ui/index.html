@@ -287,6 +287,9 @@
                     <span class="text-sm text-slate-400 hidden md:block">Design your layout or load a preset.</span>
                 </div>
                 <div class="flex items-center space-x-2 w-2/3 justify-end">
+                    <button onclick="clearCanvas()" class="text-rose-400 hover:text-rose-300 font-medium py-1.5 px-3 rounded-lg text-sm bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 transition-colors flex items-center mr-2" title="Wipe entire canvas clean">
+                        <i class="fa-solid fa-trash-can mr-2"></i> Clear Canvas
+                    </button>
                     <input type="text" id="custom-template-name" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors w-48 placeholder-slate-500" placeholder="New Template Name">
                     <button onclick="saveUserTemplate()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium py-1.5 px-4 rounded-lg text-sm transition-all border border-slate-600">
                         <i class="fa-solid fa-plus mr-1"></i> Save to Gallery

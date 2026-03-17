@@ -235,10 +235,21 @@ function initGrapesJS() {
         plugins: ['gjs-preset-newsletter'],
         pluginsOpts: {
             'gjs-preset-newsletter': {
-                modalTitleImport: 'Import template'
+                modalTitleImport: 'Import template',
+                cellStyle: {
+                    padding: 0,
+                    margin: 0,
+                    'vertical-align': 'top',
+                }
             }
         },
         storageManager: false,
+        selectorManager: {
+            componentFirst: true,
+        },
+        styleManager: {
+            clearProperties: true,
+        }
     });
 
     // Auto-save silently
@@ -258,6 +269,16 @@ function initGrapesJS() {
             editor.setComponents(html);
         }
     });
+}
+
+function clearCanvas() {
+    if(confirm("Are you sure you want to clear the entire canvas? This cannot be undone.")) {
+        if(editor) {
+            editor.DomComponents.clear();
+            editor.CssComposer.clear();
+            showToast("Canvas cleared.");
+        }
+    }
 }
 
 function populateTemplateDropdown() {
