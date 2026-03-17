@@ -80,6 +80,16 @@ class Api:
             json.dump(templates, f, indent=4)
         return {"success": True, "message": f"Template '{name}' saved to gallery."}
 
+    def delete_user_template(self, index):
+        templates = self.get_user_templates()
+        if 0 <= index < len(templates):
+            name = templates[index]["name"]
+            del templates[index]
+            with open(USER_TEMPLATES_FILE, 'w', encoding='utf-8') as f:
+                json.dump(templates, f, indent=4)
+            return {"success": True, "message": f"Template '{name}' deleted."}
+        return {"success": False, "message": "Template not found."}
+
     def get_preset_templates(self):
         templates_dir = os.path.join(DATA_DIR, 'templates')
         templates = []

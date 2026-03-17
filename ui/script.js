@@ -140,6 +140,33 @@ function renderTemplateGallery() {
         `;
         container.appendChild(btn);
     });
+    
+    // User Templates
+    const userContainer = document.getElementById('user-templates');
+    userContainer.innerHTML = '';
+    if (userTemplates.length === 0) {
+        userContainer.innerHTML = '<div class="col-span-1 md:col-span-2 text-sm text-slate-500 text-center py-4">No saved templates yet.</div>';
+    } else {
+        userTemplates.forEach((tpl, idx) => {
+            const btn = document.createElement('div');
+            btn.className = 'bg-slate-800 border border-slate-700 hover:border-blue-500 p-4 rounded-xl cursor-pointer transition-all hover:shadow-lg group relative';
+            btn.innerHTML = `
+                <div class="flex items-center justify-between mb-2">
+                    <div class="w-8 h-8 rounded bg-blue-500/10 text-blue-400 flex items-center justify-center">
+                        <i class="fa-solid fa-file-code"></i>
+                    </div>
+                </div>
+                <h4 class="text-white font-medium text-sm pr-8">${tpl.name}</h4>
+                <div class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button class="text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 w-7 h-7 rounded flex items-center justify-center transition-colors" title="Delete Template" onclick="event.stopPropagation(); deleteUserTemplate(${idx})">
+                        <i class="fa-solid fa-trash text-xs"></i>
+                    </button>
+                </div>
+                <div class="absolute inset-0 z-0" onclick="loadPresetTemplate(${idx}, 'user')"></div>
+            `;
+            userContainer.appendChild(btn);
+        });
+    }
 }
 
 function loadPresetTemplate(idx, type) {
@@ -160,8 +187,13 @@ function saveUserTemplate() {
         return;
     }
     if(!editor) return;
-    const htmlWithCss = editor.runCommand('gjs-get-inlined-html');
-    pywebview.api.save_user_template(name, htmlWithCss).then(res => {
+    
+    // Some grapejs versions fail to inline accurately if components are empty or complex. Better to inject raw CSS into head.
+    const html = editor.getHtml();
+    const css = editor.getCss();
+    const fullHtml = `<html><head><style>${css}</style></head><body>${html}</body></html>`;
+    
+    pywebview.api.save_user_template(name, fullHtml).then(res => {
         if(res.success) {
             showToast(res.message);
             nameInput.value = '';
@@ -174,6 +206,23 @@ function saveUserTemplate() {
             showToast(res.message, true);
         }
     });
+}
+
+function deleteUserTemplate(idx) {
+    if(confirm("Are you sure you want to delete this template?")) {
+        pywebview.api.delete_user_template(idx).then(res => {
+            if(res.success) {
+                showToast(res.message);
+                pywebview.api.get_user_templates().then(t => { 
+                    userTemplates = t || []; 
+                    renderTemplateGallery(); 
+                    populateTemplateDropdown();
+                });
+            } else {
+                showToast(res.message, true);
+            }
+        });
+    }
 }
 
 // GrapesJS Initialization
@@ -197,8 +246,10 @@ function initGrapesJS() {
     editor.on('change:changesCount', () => {
         clearTimeout(autoSaveTimeout);
         autoSaveTimeout = setTimeout(() => {
-            const htmlWithCss = editor.runCommand('gjs-get-inlined-html');
-            pywebview.api.save_template(htmlWithCss);
+            const html = editor.getHtml();
+            const css = editor.getCss();
+            const fullHtml = `<html><head><style>${css}</style></head><body>${html}</body></html>`;
+            pywebview.api.save_template(fullHtml);
         }, 1000);
     });
 
@@ -224,9 +275,15 @@ function populateTemplateDropdown() {
 
 function saveTemplate() {
     if(!editor) return;
-    const htmlWithCss = editor.runCommand('gjs-get-inlined-html');
-    pywebview.api.save_template(htmlWithCss).then(res => {
-        showToast(res.message, !res.success);
+    const html = editor.getHtml();
+    const css = editor.getCss();
+    const fullHtml = `<html><head><style>${css}</style></head><body>${html}</body></html>`;
+    pywebview.api.save_template(fullHtml).then(res => {
+        if(res.success) {
+            showToast(res.message);
+        } else {
+            showToast(res.message, true);
+        }
     });
 }
 
