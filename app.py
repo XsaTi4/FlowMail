@@ -12,6 +12,7 @@ from email_validator import validate_email, EmailNotValidError
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
 SETTINGS_FILE = os.path.join(DATA_DIR, 'settings.json')
 TEMPLATE_FILE = os.path.join(DATA_DIR, 'template.html')
+USER_TEMPLATES_FILE = os.path.join(DATA_DIR, 'user_templates.json')
 
 if not os.path.exists(DATA_DIR):
     os.makedirs(DATA_DIR)
@@ -19,14 +20,23 @@ if not os.path.exists(DATA_DIR):
 class Api:
     def __init__(self):
         self.sending = False
+        self.paused = False
         self.total_emails = 0
         self.sent_emails = 0
         self.failed_emails = 0
+        self.current_emails = []
+        self.subject = ""
+        self.mode = "template"
+        self.plain_text = ""
+        self.last_index = 0
         
     def get_settings(self):
         if os.path.exists(SETTINGS_FILE):
-            with open(SETTINGS_FILE, 'r') as f:
-                return json.load(f)
+            try:
+                with open(SETTINGS_FILE, 'r') as f:
+                    return json.load(f)
+            except Exception:
+                pass
         return {"smtp_server": "", "smtp_port": "587", "smtp_user": "", "smtp_password": "", "from_email": "", "from_name": "", "delay": 1.0}
 
     def save_settings(self, settings):
@@ -35,6 +45,8 @@ class Api:
         return {"success": True, "message": "Settings saved successfully."}
 
     def save_template(self, html):
+        if html is None:
+            html = ""
         with open(TEMPLATE_FILE, 'w', encoding='utf-8') as f:
             f.write(html)
         return {"success": True, "message": "Template saved successfully."}
@@ -44,6 +56,24 @@ class Api:
             with open(TEMPLATE_FILE, 'r', encoding='utf-8') as f:
                 return f.read()
         return ""
+
+    def get_user_templates(self):
+        if os.path.exists(USER_TEMPLATES_FILE):
+            try:
+                with open(USER_TEMPLATES_FILE, 'r') as f:
+                    return json.load(f)
+            except Exception:
+                pass
+        return []
+
+    def save_user_template(self, name, html):
+        if html is None:
+            html = ""
+        templates = self.get_user_templates()
+        templates.append({"name": name, "html": html})
+        with open(USER_TEMPLATES_FILE, 'w', encoding='utf-8') as f:
+            json.dump(templates, f, indent=4)
+        return {"success": True, "message": f"Template '{name}' saved to gallery."}
 
     def get_preset_templates(self):
         templates_dir = os.path.join(DATA_DIR, 'templates')
@@ -93,7 +123,7 @@ class Api:
             return self.parse_file(result[0])
         return {"success": False, "message": "No file selected."}
         
-    def start_sending(self, emails, subject, mode="template", plain_text=""):
+    def start_sending(self, emails, subject, mode="template", plain_text="", safety_limit=0, resume=False):
         if self.sending:
             return {"success": False, "message": "Already sending emails."}
             
@@ -110,29 +140,42 @@ class Api:
             return {"success": False, "message": "No recipients provided."}
             
         self.sending = True
+        self.paused = False
+        self.current_emails = emails
+        self.subject = subject
+        self.mode = mode
+        self.plain_text = plain_text
         self.total_emails = len(emails)
-        self.sent_emails = 0
-        self.failed_emails = 0
         
-        thread = threading.Thread(target=self._send_loop, args=(emails, subject, settings, template, mode, plain_text))
+        if not resume:
+            self.last_index = 0
+            self.sent_emails = 0
+            self.failed_emails = 0
+        
+        thread = threading.Thread(target=self._send_loop, args=(settings, template, safety_limit))
         thread.daemon = True
         thread.start()
         
-        return {"success": True, "message": "Sending started."}
+        return {"success": True, "message": "Sending started." if not resume else "Sending resumed."}
         
-    def stop_sending(self):
+    def stop_sending(self, is_pause=False):
         self.sending = False
-        return {"success": True, "message": "Sending stopped."}
+        if is_pause:
+            self.paused = True
+            return {"success": True, "message": "Sending paused by safety limit."}
+        return {"success": True, "message": "Sending stopped manually or finished."}
         
     def get_progress(self):
         return {
             "sending": self.sending,
+            "paused": self.paused,
+            "last_index": self.last_index,
             "total": self.total_emails,
             "sent": self.sent_emails,
             "failed": self.failed_emails
         }
 
-    def _send_loop(self, emails, subject, settings, template, mode, plain_text):
+    def _send_loop(self, settings, template, safety_limit):
         try:
             server = smtplib.SMTP(settings["smtp_server"], int(settings["smtp_port"]))
             server.starttls()
@@ -141,30 +184,41 @@ class Api:
             delay = float(settings.get("delay", 1.0))
             from_addr = f'{settings.get("from_name", "")} <{settings["from_email"]}>' if settings.get("from_name") else settings["from_email"]
             
-            for email in emails:
+            session_sent = 0
+            
+            for i in range(self.last_index, len(self.current_emails)):
                 if not self.sending:
                     break
                     
+                email = self.current_emails[i]
+                self.last_index = i
+                
                 try:
                     msg = MIMEMultipart('alternative')
-                    msg['Subject'] = subject
+                    msg['Subject'] = self.subject
                     msg['From'] = from_addr
                     msg['To'] = email
                     
-                    if mode == "template":
+                    if self.mode == "template":
                         part = MIMEText(template, 'html')
                     else:
-                        part = MIMEText(plain_text, 'plain')
+                        part = MIMEText(self.plain_text, 'plain')
                         
                     msg.attach(part)
                     
                     server.send_message(msg)
                     self.sent_emails += 1
+                    session_sent += 1
                 except Exception as e:
                     print(f"Failed to send to {email}: {e}")
                     self.failed_emails += 1
                 
-                if delay > 0:
+                if safety_limit > 0 and session_sent >= safety_limit:
+                    self.sending = False
+                    self.paused = True
+                    break
+                
+                if delay > 0 and i < len(self.current_emails) - 1 and self.sending:
                     time.sleep(delay)
                     
             server.quit()

@@ -3,6 +3,8 @@ let loadedEmails = [];
 let progressInterval;
 let currentSendMode = 'template';
 let presetTemplates = [];
+let userTemplates = [];
+let galleryTab = 'sys';
 
 // Tab Switching
 function switchTab(tabId) {
@@ -36,10 +38,13 @@ window.addEventListener('pywebviewready', function() {
     loadSettings();
     document.getElementById('btn-dashboard').classList.add('bg-slate-800', 'text-white');
     
-    // Fetch preset templates
+    // Fetch templates
     pywebview.api.get_preset_templates().then(templates => {
         presetTemplates = templates;
         renderTemplateGallery();
+    });
+    pywebview.api.get_user_templates().then(templates => {
+        userTemplates = templates || [];
     });
 });
 
@@ -85,18 +90,40 @@ function toggleTemplateGallery() {
     const gallery = document.getElementById('template-gallery');
     if (gallery.classList.contains('-translate-x-full')) {
         gallery.classList.remove('-translate-x-full');
+        renderTemplateGallery();
     } else {
         gallery.classList.add('-translate-x-full');
     }
 }
 
+function switchGallery(tab) {
+    galleryTab = tab;
+    const btnSys = document.getElementById('tab-sys');
+    const btnUser = document.getElementById('tab-user');
+    if (tab === 'sys') {
+        btnSys.className = 'flex-1 py-1.5 text-xs font-bold rounded-md bg-slate-700 text-white shadow transition-all';
+        btnUser.className = 'flex-1 py-1.5 text-xs font-bold rounded-md text-slate-400 hover:text-white transition-all';
+    } else {
+        btnUser.className = 'flex-1 py-1.5 text-xs font-bold rounded-md bg-slate-700 text-white shadow transition-all';
+        btnSys.className = 'flex-1 py-1.5 text-xs font-bold rounded-md text-slate-400 hover:text-white transition-all';
+    }
+    renderTemplateGallery();
+}
+
 function renderTemplateGallery() {
     const container = document.getElementById('gallery-container');
     container.innerHTML = '';
-    presetTemplates.forEach((tpl, idx) => {
+    const items = galleryTab === 'sys' ? presetTemplates : userTemplates;
+    
+    if (items.length === 0) {
+        container.innerHTML = '<div class="text-sm text-slate-500 text-center mt-4">No templates found.</div>';
+        return;
+    }
+    
+    items.forEach((tpl, idx) => {
         const btn = document.createElement('button');
         btn.className = 'w-full text-left bg-slate-800 hover:bg-slate-700 p-3 rounded-lg border border-slate-700 transition-colors flex items-center justify-between group';
-        btn.onclick = () => loadPresetTemplate(idx);
+        btn.onclick = () => loadPresetTemplate(idx, galleryTab);
         btn.innerHTML = `
             <span class="text-sm text-slate-200">${tpl.name}</span>
             <i class="fa-solid fa-chevron-right text-slate-500 text-xs opacity-0 group-hover:opacity-100 transition-opacity"></i>
@@ -105,11 +132,34 @@ function renderTemplateGallery() {
     });
 }
 
-function loadPresetTemplate(idx) {
-    if(!editor || !presetTemplates[idx]) return;
-    editor.setComponents(presetTemplates[idx].html);
-    toggleTemplateGallery();
-    showToast(`Loaded "${presetTemplates[idx].name}" template`);
+function loadPresetTemplate(idx, type) {
+    if(!editor) return;
+    const tpl = type === 'sys' ? presetTemplates[idx] : userTemplates[idx];
+    if (tpl) {
+        editor.setComponents(tpl.html);
+        toggleTemplateGallery();
+        showToast(`Loaded "${tpl.name}" template`);
+    }
+}
+
+function saveUserTemplate() {
+    const nameInput = document.getElementById('custom-template-name');
+    const name = nameInput.value.trim();
+    if (!name) {
+        showToast("Please enter a name for the custom template", true);
+        return;
+    }
+    if(!editor) return;
+    const htmlWithCss = editor.runCommand('gjs-get-inlined-html');
+    pywebview.api.save_user_template(name, htmlWithCss).then(res => {
+        if(res.success) {
+            showToast(res.message);
+            nameInput.value = '';
+            pywebview.api.get_user_templates().then(t => { userTemplates = t || []; renderTemplateGallery(); });
+        } else {
+            showToast(res.message, true);
+        }
+    });
 }
 
 // GrapesJS Initialization
@@ -120,6 +170,11 @@ function initGrapesJS() {
         width: 'auto',
         fromElement: true,
         plugins: ['gjs-preset-newsletter'],
+        pluginsOpts: {
+            'gjs-preset-newsletter': {
+                modalTitleImport: 'Import template'
+            }
+        },
         storageManager: false,
     });
 
@@ -203,8 +258,22 @@ function clearRecipients() {
     showToast("Recipient list cleared.");
 }
 
+function checkRisk() {
+    const total = loadedEmails.length;
+    pywebview.api.get_settings().then(settings => {
+        const delay = parseFloat(settings.delay || 1.0);
+        const warning = document.getElementById('risk-warning');
+        if (total > 50 && delay < 2.0) {
+            warning.classList.remove('hidden');
+        } else {
+            warning.classList.add('hidden');
+        }
+    });
+}
+
 function updateRecipientCount() {
     document.getElementById('recipient-count').innerText = loadedEmails.length;
+    checkRisk();
 }
 
 // Sending Logic
@@ -225,9 +294,10 @@ function setSendMode(mode) {
     }
 }
 
-function startSending() {
+function startSending(resume = false) {
     const subject = document.getElementById('subject').value;
     const plainText = document.getElementById('plain_text_message').value;
+    const limitInput = parseInt(document.getElementById('safety_limit').value) || 0;
 
     if(!subject) {
         showToast("Please enter an email subject", true);
@@ -238,18 +308,20 @@ function startSending() {
         return;
     }
 
-    pywebview.api.start_sending(loadedEmails, subject, currentSendMode, plainText).then(res => {
+    pywebview.api.start_sending(loadedEmails, subject, currentSendMode, plainText, limitInput, resume).then(res => {
         if(res.success) {
             document.getElementById('btn-send').classList.add('hidden');
+            document.getElementById('btn-resume').classList.add('hidden');
             document.getElementById('btn-stop').classList.remove('hidden');
             document.getElementById('btn-stop').classList.add('flex');
             showToast(res.message);
             
-            // Initial reset of progress UI
-            document.getElementById('prog-bar').style.width = '0%';
-            document.getElementById('prog-sent-num').innerText = '0';
-            document.getElementById('prog-failed-num').innerText = '0';
-            document.getElementById('prog-sent').innerText = '0';
+            if(!resume) {
+                document.getElementById('prog-bar').style.width = '0%';
+                document.getElementById('prog-sent-num').innerText = '0';
+                document.getElementById('prog-failed-num').innerText = '0';
+                document.getElementById('prog-sent').innerText = '0';
+            }
             
             progressInterval = setInterval(updateProgress, 500);
         } else {
@@ -258,12 +330,18 @@ function startSending() {
     });
 }
 
+function resumeSending() {
+    startSending(true);
+}
+
 function stopSending() {
-    pywebview.api.stop_sending().then(res => {
+    pywebview.api.stop_sending(true).then(res => {
         showToast(res.message);
-        document.getElementById('btn-send').classList.remove('hidden');
+        document.getElementById('btn-send').classList.add('hidden');
         document.getElementById('btn-stop').classList.add('hidden');
         document.getElementById('btn-stop').classList.remove('flex');
+        document.getElementById('btn-resume').classList.remove('hidden');
+        document.getElementById('btn-resume').classList.add('flex');
         clearInterval(progressInterval);
     });
 }
@@ -284,10 +362,18 @@ function updateProgress() {
         
         if(!res.sending) {
             clearInterval(progressInterval);
-            document.getElementById('btn-send').classList.remove('hidden');
             document.getElementById('btn-stop').classList.add('hidden');
             document.getElementById('btn-stop').classList.remove('flex');
-            if(total > 0 && (sent + failed) === total) {
+            
+            if (res.paused) {
+                document.getElementById('btn-send').classList.add('hidden');
+                document.getElementById('btn-resume').classList.remove('hidden');
+                document.getElementById('btn-resume').classList.add('flex');
+                showToast("Sending Paused (Safety Limit Reached)");
+            } else if(total > 0 && (sent + failed) === total) {
+                document.getElementById('btn-send').classList.remove('hidden');
+                document.getElementById('btn-resume').classList.add('hidden');
+                document.getElementById('btn-resume').classList.remove('flex');
                 showToast("Campaign finished!");
             }
         }

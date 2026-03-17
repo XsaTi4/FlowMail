@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Environment
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Apple
+.DS_Store
+
+# PyBuilder
+target/
+
+# Application Data
+data/settings.json
+data/state.json
+data/user_templates.json
+# Note: data/templates/ is kept as it contains the 15 system presets
+
+# VS Code
+.vscode/
+.history/

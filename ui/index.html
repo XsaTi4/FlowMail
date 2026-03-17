@@ -110,15 +110,26 @@
                             
                             <div id="plain-text-config" class="hidden">
                                 <label class="block text-sm font-medium text-slate-400 mb-1">Plain Text Message</label>
-                                <textarea id="plain_text_message" rows="5" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 transition-colors" placeholder="Type your simple message here..."></textarea>
+                                <textarea id="plain_text_message" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 transition-colors" placeholder="Type your simple message here..."></textarea>
                             </div>
 
-                            <div class="pt-4 mt-auto">
+                            <div class="flex space-x-4 pt-1">
+                                <div class="flex-1">
+                                    <label class="block text-sm font-medium text-slate-400 mb-1"><i class="fa-solid fa-shield-halved text-emerald-400 mr-1"></i> Auto-Pause Limit</label>
+                                    <input type="number" id="safety_limit" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500 transition-colors" placeholder="0 = No limit" value="0">
+                                </div>
+                            </div>
+                            <div id="risk-warning" class="text-xs text-orange-400 hidden"><i class="fa-solid fa-triangle-exclamation mr-1"></i> High risk of blocking! Consider increasing delay or using Auto-Pause.</div>
+
+                            <div class="pt-2 mt-auto">
                                 <button id="btn-send" onclick="startSending()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-3 px-4 rounded-lg flex items-center justify-center transition-all shadow-lg shadow-blue-500/20">
                                     <i class="fa-solid fa-paper-plane mr-2"></i> Start Sending
                                 </button>
-                                <button id="btn-stop" onclick="stopSending()" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-medium py-3 px-4 rounded-lg items-center justify-center transition-all shadow-lg shadow-rose-500/20 hidden">
-                                    <i class="fa-solid fa-stop mr-2"></i> Stop Sending
+                                <button id="btn-resume" onclick="resumeSending()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-3 px-4 rounded-lg items-center justify-center transition-all shadow-lg shadow-emerald-500/20 hidden">
+                                    <i class="fa-solid fa-play mr-2"></i> Resume Sending
+                                </button>
+                                <button id="btn-stop" onclick="stopSending()" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-medium py-3 px-4 rounded-lg items-center justify-center transition-all shadow-lg shadow-rose-500/20 hidden mt-2">
+                                    <i class="fa-solid fa-stop mr-2"></i> Stop / Pause
                                 </button>
                             </div>
                         </div>
@@ -208,9 +219,9 @@
                             <i class="fa-brands fa-google text-2xl text-rose-500 absolute left-4 top-5"></i>
                             <h4 class="text-white font-medium mb-1">Gmail / Google Workspace</h4>
                             <p class="text-sm text-slate-400 leading-relaxed mb-2">You cannot use your normal password. You must generate an <strong>App Password</strong>.</p>
-                            <ol class="text-sm text-slate-400 list-decimal list-inside space-y-1">
-                                <li>Enable 2-Step Verification in Google Account Security.</li>
-                                <li>Search for "App passwords" in settings.</li>
+                            <ol class="text-sm text-slate-400 list-decimal list-inside space-y-2">
+                                <li>Enable <a href="https://myaccount.google.com/security" target="_blank" class="text-blue-400 hover:underline">2-Step Verification</a> in Google Account.</li>
+                                <li>Go to the <a href="https://myaccount.google.com/apppasswords" target="_blank" class="text-blue-400 hover:underline font-bold">App Passwords page</a>.</li>
                                 <li>Create a new app (name it "MailFlow").</li>
                                 <li>Copy the 16-character code and paste it here.</li>
                             </ol>
@@ -237,15 +248,21 @@
         <!-- BUILDER TAB -->
         <div id="tab-builder" class="tab-content absolute inset-0 hidden flex-col">
             <div class="bg-slate-900 border-b border-slate-800 p-3 flex justify-between items-center shrink-0 shadow-sm z-10">
-                <div class="flex items-center space-x-4">
+                <div class="flex items-center space-x-4 w-1/3">
                     <button onclick="toggleTemplateGallery()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium py-1.5 px-4 rounded-lg text-sm border border-slate-600 transition-all flex items-center">
                         <i class="fa-solid fa-layer-group mr-2 text-indigo-400"></i> Gallery
                     </button>
-                    <span class="text-sm text-slate-400">Design your layout or load a preset.</span>
+                    <span class="text-sm text-slate-400 hidden md:block">Design your layout or load a preset.</span>
                 </div>
-                <button onclick="saveTemplate()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-1.5 px-4 rounded-lg text-sm transition-all flex items-center shadow-lg shadow-indigo-500/20">
-                    <i class="fa-solid fa-floppy-disk mr-2"></i> Save Layout
-                </button>
+                <div class="flex items-center space-x-2 w-2/3 justify-end">
+                    <input type="text" id="custom-template-name" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors w-48 placeholder-slate-500" placeholder="New Template Name">
+                    <button onclick="saveUserTemplate()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium py-1.5 px-4 rounded-lg text-sm transition-all border border-slate-600">
+                        <i class="fa-solid fa-plus mr-1"></i> Save to Gallery
+                    </button>
+                    <button onclick="saveTemplate()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-1.5 px-4 rounded-lg text-sm transition-all flex items-center shadow-lg shadow-indigo-500/20 border border-indigo-500">
+                        <i class="fa-solid fa-floppy-disk mr-2"></i> Save Current
+                    </button>
+                </div>
             </div>
             
             <div class="flex-1 w-full h-full relative flex">
@@ -255,8 +272,12 @@
                 <!-- Overlay Gallery (Hidden) -->
                 <div id="template-gallery" class="absolute inset-y-0 left-0 w-80 bg-dark shadow-2xl border-r border-slate-800 transform -translate-x-full transition-transform duration-300 flex flex-col z-20">
                     <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900">
-                        <h3 class="text-white font-medium">Preset Templates</h3>
+                        <h3 class="text-white font-medium">Templates</h3>
                         <button onclick="toggleTemplateGallery()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                    <div class="flex border-b border-slate-800 bg-slate-900 p-1">
+                        <button id="tab-sys" onclick="switchGallery('sys')" class="flex-1 py-1.5 text-xs font-bold rounded-md bg-slate-700 text-white shadow">System</button>
+                        <button id="tab-user" onclick="switchGallery('user')" class="flex-1 py-1.5 text-xs font-bold rounded-md text-slate-400 hover:text-white">My Templates</button>
                     </div>
                     <div class="flex-1 overflow-y-auto p-4 space-y-3" id="gallery-container">
                         <!-- Filled via JS -->
