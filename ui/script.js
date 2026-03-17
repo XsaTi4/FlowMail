@@ -493,7 +493,13 @@ function updateProgress() {
                 document.getElementById('btn-send').classList.add('flex');
                 document.getElementById('btn-resume').classList.add('hidden');
                 document.getElementById('btn-resume').classList.remove('flex');
-                showToast("Campaign finished!");
+                
+                // Auto-clear cache
+                pywebview.api.clear_cache().then(() => {
+                    loadedEmails = [];
+                    updateRecipientCount();
+                    showToast("Campaign finished! Cache auto-cleared.");
+                });
             } else {
                 // Stopped or paused
                 document.getElementById('btn-send').classList.add('hidden');
@@ -578,6 +584,16 @@ function removeFromQueue(email) {
             openQueueModal(); // refresh UI
             showToast(res.message);
         } else {
+            if (res.message === "Email not found.") {
+                let initialLen = loadedEmails.length;
+                loadedEmails = loadedEmails.filter(e => e !== email);
+                if (loadedEmails.length < initialLen) {
+                    updateRecipientCount();
+                    openQueueModal(); // refresh UI
+                    showToast(email + " removed.");
+                    return;
+                }
+            }
             showToast(res.message, true);
         }
     });
