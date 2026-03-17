@@ -46,6 +46,14 @@ window.addEventListener('pywebviewready', function() {
     pywebview.api.get_user_templates().then(templates => {
         userTemplates = templates || [];
     });
+    
+    // Check for previous state
+    pywebview.api.get_state().then(state => {
+        if (state && state.current_emails && state.current_emails.length > 0 && state.last_index < state.current_emails.length) {
+            document.getElementById('btn-recovery').classList.remove('hidden');
+            document.getElementById('btn-recovery').classList.add('flex');
+        }
+    });
 });
 
 // Toast Notifications
@@ -196,12 +204,16 @@ function saveTemplate() {
 // Settings
 function loadSettings() {
     pywebview.api.get_settings().then(settings => {
-        document.getElementById('smtp_server').value = settings.smtp_server || '';
-        document.getElementById('smtp_port').value = settings.smtp_port || '587';
-        document.getElementById('smtp_user').value = settings.smtp_user || '';
-        document.getElementById('smtp_password').value = settings.smtp_password || '';
-        document.getElementById('from_name').value = settings.from_name || '';
-        document.getElementById('delay').value = settings.delay || '1.0';
+        if(settings) {
+            document.getElementById('smtp_server').value = settings.smtp_server || '';
+            document.getElementById('smtp_port').value = settings.smtp_port || '';
+            document.getElementById('smtp_user').value = settings.smtp_user || '';
+            document.getElementById('smtp_password').value = settings.smtp_password || '';
+            document.getElementById('from_email').value = settings.from_email || '';
+            document.getElementById('from_name').value = settings.from_name || '';
+            document.getElementById('set_delay').value = settings.delay || 1.0;
+            document.getElementById('set_jitter').checked = settings.jitter || false;
+        }
     });
 }
 
@@ -211,13 +223,18 @@ function saveSettings() {
         smtp_port: document.getElementById('smtp_port').value,
         smtp_user: document.getElementById('smtp_user').value,
         smtp_password: document.getElementById('smtp_password').value,
-        from_email: document.getElementById('smtp_user').value, // Auto tie to username
+        from_email: document.getElementById('from_email').value,
         from_name: document.getElementById('from_name').value,
-        delay: parseFloat(document.getElementById('delay').value) || 1.0
+        delay: parseFloat(document.getElementById('set_delay').value) || 1.0,
+        jitter: document.getElementById('set_jitter').checked
     };
     
     pywebview.api.save_settings(settings).then(res => {
-        showToast(res.message, !res.success);
+        if(res.success) {
+            showToast(res.message);
+        } else {
+            showToast(res.message, true);
+        }
     });
 }
 
@@ -332,6 +349,39 @@ function startSending(resume = false) {
 
 function resumeSending() {
     startSending(true);
+}
+
+function recoverState() {
+    pywebview.api.get_state().then(state => {
+        if (state && state.current_emails) {
+            loadedEmails = state.current_emails;
+            updateRecipientCount();
+            document.getElementById('subject').value = state.subject || "";
+            if (state.mode) {
+                setSendMode(state.mode);
+            }
+            if (state.plain_text) {
+                document.getElementById('plain_text_message').value = state.plain_text;
+            }
+            
+            document.getElementById('prog-total').innerText = state.total_emails || 0;
+            document.getElementById('prog-sent').innerText = state.sent_emails || 0;
+            document.getElementById('prog-sent-num').innerText = state.sent_emails || 0;
+            document.getElementById('prog-failed-num').innerText = state.failed_emails || 0;
+            
+            let total = state.total_emails || 0;
+            let percent = total > 0 ? Math.round(((state.sent_emails + state.failed_emails) / total) * 100) : 0;
+            document.getElementById('prog-bar').style.width = `${percent}%`;
+
+            document.getElementById('btn-recovery').classList.add('hidden');
+            document.getElementById('btn-recovery').classList.remove('flex');
+            document.getElementById('btn-send').classList.add('hidden');
+            document.getElementById('btn-resume').classList.remove('hidden');
+            document.getElementById('btn-resume').classList.add('flex');
+            
+            showToast("Previous session recovered! Press Resume to continue.");
+        }
+    });
 }
 
 function stopSending() {

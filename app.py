@@ -13,6 +13,7 @@ DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
 SETTINGS_FILE = os.path.join(DATA_DIR, 'settings.json')
 TEMPLATE_FILE = os.path.join(DATA_DIR, 'template.html')
 USER_TEMPLATES_FILE = os.path.join(DATA_DIR, 'user_templates.json')
+STATE_FILE = os.path.join(DATA_DIR, 'state.json')
 
 if not os.path.exists(DATA_DIR):
     os.makedirs(DATA_DIR)
@@ -34,10 +35,13 @@ class Api:
         if os.path.exists(SETTINGS_FILE):
             try:
                 with open(SETTINGS_FILE, 'r') as f:
-                    return json.load(f)
+                    settings = json.load(f)
+                    if "jitter" not in settings:
+                        settings["jitter"] = False
+                    return settings
             except Exception:
                 pass
-        return {"smtp_server": "", "smtp_port": "587", "smtp_user": "", "smtp_password": "", "from_email": "", "from_name": "", "delay": 1.0}
+        return {"smtp_server": "", "smtp_port": "587", "smtp_user": "", "smtp_password": "", "from_email": "", "from_name": "", "delay": 1.0, "jitter": False}
 
     def save_settings(self, settings):
         with open(SETTINGS_FILE, 'w') as f:
@@ -123,6 +127,29 @@ class Api:
             return self.parse_file(result[0])
         return {"success": False, "message": "No file selected."}
         
+    def get_state(self):
+        if os.path.exists(STATE_FILE):
+            try:
+                with open(STATE_FILE, 'r') as f:
+                    return json.load(f)
+            except Exception:
+                pass
+        return {"current_emails": [], "last_index": 0, "subject": "", "mode": "template", "plain_text": ""}
+
+    def save_state(self):
+        state = {
+            "current_emails": self.current_emails,
+            "last_index": self.last_index,
+            "subject": self.subject,
+            "mode": self.mode,
+            "plain_text": self.plain_text,
+            "total_emails": self.total_emails,
+            "sent_emails": self.sent_emails,
+            "failed_emails": self.failed_emails
+        }
+        with open(STATE_FILE, 'w', encoding='utf-8') as f:
+            json.dump(state, f, indent=4)
+
     def start_sending(self, emails, subject, mode="template", plain_text="", safety_limit=0, resume=False):
         if self.sending:
             return {"success": False, "message": "Already sending emails."}
@@ -151,15 +178,28 @@ class Api:
             self.last_index = 0
             self.sent_emails = 0
             self.failed_emails = 0
+        else:
+            state = self.get_state()
+            if state and "last_index" in state and emails == state.get("current_emails"):
+                self.last_index = state.get("last_index", 0)
+                self.sent_emails = state.get("sent_emails", 0)
+                self.failed_emails = state.get("failed_emails", 0)
+            else:
+                self.last_index = 0
+                self.sent_emails = 0
+                self.failed_emails = 0
+                
+        self.save_state()
         
         thread = threading.Thread(target=self._send_loop, args=(settings, template, safety_limit))
         thread.daemon = True
         thread.start()
         
-        return {"success": True, "message": "Sending started." if not resume else "Sending resumed."}
+        return {"success": True, "message": "Sending started." if not resume else f"Resumed from email #{self.last_index + 1}."}
         
     def stop_sending(self, is_pause=False):
         self.sending = False
+        self.save_state()
         if is_pause:
             self.paused = True
             return {"success": True, "message": "Sending paused by safety limit."}
@@ -213,19 +253,26 @@ class Api:
                     print(f"Failed to send to {email}: {e}")
                     self.failed_emails += 1
                 
+                self.save_state()
+                
                 if safety_limit > 0 and session_sent >= safety_limit:
                     self.sending = False
                     self.paused = True
                     break
                 
                 if delay > 0 and i < len(self.current_emails) - 1 and self.sending:
-                    time.sleep(delay)
+                    actual_delay = delay
+                    if settings.get("jitter", False):
+                        import random
+                        actual_delay = delay * random.uniform(0.8, 1.5)
+                    time.sleep(actual_delay)
                     
             server.quit()
         except Exception as e:
             print(f"SMTP Error: {e}")
         finally:
             self.sending = False
+            self.save_state()
 
 if __name__ == '__main__':
     api = Api()
