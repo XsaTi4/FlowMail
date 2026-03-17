@@ -160,11 +160,141 @@ templates = [
     <p>Let me know what time works best for you.</p>
     <p>Best,<br>Your Name</p>
 </div>'''
+    },
+    {
+        "name": "App Update / Feature Release",
+        "html": '''<div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 30px; border: 1px solid #e2e8f0; border-top: 5px solid #8b5cf6;">
+    <h2 style="color: #6d28d9; text-align: center;">Version 2.0 is Here! 🚀</h2>
+    <p style="color: #475569;">We've been working hard to bring you the most requested features. Update your app today to get access to:</p>
+    <ul style="color: #475569; line-height: 1.6;">
+        <li>Dark Mode support across all devices</li>
+        <li> lightning-fast performance improvements</li>
+        <li>New integration plugins</li>
+    </ul>
+    <div style="text-align: center; margin-top: 30px;">
+        <a href="#" style="background: #8b5cf6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Download Update</a>
+    </div>
+</div>'''
+    },
+    {
+        "name": "Review Request",
+        "html": '''<div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 40px 20px; text-align: center; background: #fafafa; border-radius: 8px;">
+    <h2>Enjoying your purchase?</h2>
+    <p style="color: #666; font-size: 16px;">Your feedback helps us create better products for everyone. Could you take 60 seconds to leave us a review?</p>
+    <div style="margin: 30px 0;">
+        <span style="font-size: 32px; color: #fbbf24; cursor: pointer;">★★★★★</span>
+    </div>
+    <a href="#" style="background: #111827; color: white; padding: 14px 28px; text-decoration: none; border-radius: 4px; font-weight: bold;">Leave a Review</a>
+</div>'''
+    },
+    {
+        "name": "Subscription Renewal Warning",
+        "html": '''<div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 30px; border-left: 5px solid #f59e0b; background: #fffbeb;">
+    <h2 style="color: #d97706;">Your Subscription is Expiring Soon</h2>
+    <p style="color: #78350f;">Hi there,</p>
+    <p style="color: #78350f;">Just a quick reminder that your annual subscription will renew automatically on <strong>March 30, 2026</strong>.</p>
+    <p style="color: #78350f;">No action is required to continue enjoying our services. If you wish to make changes to your plan, click below.</p>
+    <a href="#" style="display: inline-block; margin-top: 15px; background: #d97706; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">Manage Subscription</a>
+</div>'''
+    },
+    {
+        "name": "Cyber Monday Mega Sale",
+        "html": '''<div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; text-align: center; background: linear-gradient(135deg, #0f172a, #1e293b); color: white; padding: 50px 20px;">
+    <h3 style="color: #38bdf8; text-transform: uppercase; letter-spacing: 2px;">Cyber Monday Starts Now</h3>
+    <h1 style="font-size: 54px; margin: 10px 0; color: #fff;">UP TO 70% OFF</h1>
+    <p style="color: #94a3b8; font-size: 18px; margin-bottom: 30px;">Our biggest sale of the year is live. Stock is limited!</p>
+    <a href="#" style="background: #38bdf8; color: #0f172a; padding: 16px 36px; text-decoration: none; font-weight: bold; font-size: 18px; border-radius: 50px;">SHOP THE SALE</a>
+</div>'''
+    },
+    {
+        "name": "Welcome Series: Day 2",
+        "html": '''<div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 30px;">
+    <h2>Let's set up your profile</h2>
+    <p>Welcome back! Let's get your account fully configured so you can get the most out of our platform.</p>
+    <div style="background: #f1f5f9; padding: 20px; margin: 20px 0; border-radius: 8px;">
+        <h3 style="margin-top: 0; color: #334155;">Step 1: Upload a Photo</h3>
+        <p style="color: #64748b; font-size: 14px;">Profiles with photos get 3x more engagement.</p>
+        <h3 style="color: #334155;">Step 2: Connect Socials</h3>
+        <p style="color: #64748b; font-size: 14px;">Link your Twitter or LinkedIn for seamless sharing.</p>
+    </div>
+    <a href="#" style="color: #2563eb; font-weight: bold; text-decoration: none;">Go to Profile Settings &rarr;</a>
+</div>'''
+    },
+    {
+        "name": "Webinar Reminder (1 Hour Left)",
+        "html": '''<div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 30px; border: 2px solid #e0f2fe; background: #f0f9ff; text-align: center;">
+    <h1 style="color: #0369a1;">We're starting in 1 hour!</h1>
+    <p style="color: #0c4a6e; font-size: 18px;">Grab a coffee and get ready. The webinar room will open 10 minutes before start time.</p>
+    <div style="margin: 30px 0;">
+        <a href="#" style="background: #0ea5e9; color: white; padding: 15px 30px; text-decoration: none; font-weight: bold; font-size: 18px; border-radius: 8px;">Join the Web-Room</a>
+    </div>
+    <p style="color: #0369a1; font-size: 14px;">Need help logging in? <a href="#" style="color: #0284c7;">Click here</a>.</p>
+</div>'''
+    },
+    {
+        "name": "Daily Digest",
+        "html": '''<div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 0;">
+    <div style="background: #fff; padding: 20px; border-bottom: 1px solid #eee;">
+        <h2 style="margin: 0; color: #111;">Your Daily Digest</h2>
+        <p style="color: #666; margin: 5px 0 0 0; font-size: 14px;">Tuesday, March 17th</p>
+    </div>
+    <div style="padding: 20px;">
+        <h3 style="color: #222; margin-top: 0;">1. The Future of AI in Email Marketing</h3>
+        <p style="color: #555; font-size: 15px;">Discover how automated personalization is driving click-through rates up by 40% across top industries...</p>
+        <a href="#" style="color: #0066cc; font-size: 14px; text-decoration: none;">Read 5 min article</a>
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+        <h3 style="color: #222; margin-top: 0;">2. 10 Tips for Better Deliverability</h3>
+        <p style="color: #555; font-size: 15px;">Are your emails hitting the spam folder? Check out our checklist for keeping your sender reputation pristine.</p>
+        <a href="#" style="color: #0066cc; font-size: 14px; text-decoration: none;">Read 3 min article</a>
+    </div>
+</div>'''
+    },
+    {
+        "name": "B2B Outreach / Lead Gen",
+        "html": '''<div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; color: #1f2937; line-height: 1.6;">
+    <p>Hi [First Name],</p>
+    <p>I noticed that [Company] is scaling rapidly, and I wanted to reach out because we recently helped [Competitor/Similar Company] achieve a 25% reduction in operational costs using our platform.</p>
+    <p>Are you open to a quick 10-minute call this Thursday to see if we'd be a good fit for your current goals?</p>
+    <p>No pressure either way.</p>
+    <p>Best regards,<br><strong>[Your Name]</strong><br>[Your Title]<br><a href="#" style="color: #2563eb;">Schedule a Time</a></p>
+</div>'''
+    },
+    {
+        "name": "We Miss You (Win-back)",
+        "html": '''<div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 40px; text-align: center; border: 1px solid #f3f4f6;">
+    <div style="font-size: 50px; margin-bottom: 20px;">🥺</div>
+    <h2 style="color: #111827;">We miss you, [Name]!</h2>
+    <p style="color: #4b5563; font-size: 16px; margin-bottom: 30px;">It's been a while since we last saw you. We've added a ton of new features and products we think you'll love.</p>
+    <p style="color: #111827; font-weight: bold;">Come back today and get $20 off your next order.</p>
+    <a href="#" style="display: inline-block; background: #000; color: #fff; padding: 14px 28px; text-decoration: none; font-weight: bold; margin-top: 20px;">Claim My $20</a>
+</div>'''
+    },
+    {
+        "name": "Internal Team Announcement",
+        "html": '''<div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 30px; background: #ffffff; border: 1px solid #d1d5db;">
+    <div style="border-bottom: 2px solid #14b8a6; padding-bottom: 15px; margin-bottom: 20px;">
+        <h2 style="color: #0f766e; margin: 0;">Company Update</h2>
+        <span style="color: #6b7280; font-size: 13px;">INTERNAL TO ALL STAFF</span>
+    </div>
+    <p style="color: #374151;">Team,</p>
+    <p style="color: #374151;">I am thrilled to announce that we have officially closed our Series B funding round! This is a massive milestone for all of us.</p>
+    <p style="color: #374151;">Please join us for a town hall meeting tomorrow at 10 AM where the leadership team will discuss our next steps and roadmap for Q3.</p>
+    <p style="color: #374151;">Thanks,<br>CEO</p>
+</div>'''
     }
 ]
 
-for i, template in enumerate(templates):
-    with open(os.path.join(templates_dir, f'template_{i}.json'), 'w') as f:
-        json.dump(template, f, indent=4)
+def generate_system_templates(data_dir=None):
+    if not data_dir:
+        data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+    templates_dir = os.path.join(data_dir, 'templates')
+    os.makedirs(templates_dir, exist_ok=True)
 
-print("Generated 15 preset templates in data/templates/")
+    for i, template in enumerate(templates):
+        filepath = os.path.join(templates_dir, f'template_{i}.json')
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(template, f, indent=4)
+
+if __name__ == '__main__':
+    generate_system_templates()
+    print("Generated 25 preset templates in data/templates/")

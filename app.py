@@ -18,6 +18,14 @@ STATE_FILE = os.path.join(DATA_DIR, 'state.json')
 if not os.path.exists(DATA_DIR):
     os.makedirs(DATA_DIR)
 
+TEMPLATES_DIR_PATH = os.path.join(DATA_DIR, 'templates')
+if not os.path.exists(TEMPLATES_DIR_PATH) or not os.listdir(TEMPLATES_DIR_PATH):
+    try:
+        from generate_templates import generate_system_templates
+        generate_system_templates(DATA_DIR)
+    except Exception as e:
+        print(f"Warning: Failed to auto-generate system templates: {e}")
+
 class Api:
     def __init__(self):
         self.sending = False
