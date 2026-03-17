@@ -157,9 +157,9 @@ function renderTemplateGallery() {
                     </div>
                 </div>
                 <h4 class="text-white font-medium text-sm pr-8">${tpl.name}</h4>
-                <div class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button class="text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 w-7 h-7 rounded flex items-center justify-center transition-colors" title="Delete Template" onclick="event.stopPropagation(); deleteUserTemplate(${idx})">
-                        <i class="fa-solid fa-trash text-xs"></i>
+                <div class="absolute top-3 right-3 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                    <button class="text-rose-400 hover:text-rose-200 bg-rose-500/20 hover:bg-rose-500/40 w-8 h-8 rounded-md flex items-center justify-center transition-all shadow-sm" title="Delete Template" onclick="event.stopPropagation(); deleteUserTemplate(${idx})">
+                        <i class="fa-solid fa-trash text-sm"></i>
                     </button>
                 </div>
                 <div class="absolute inset-0 z-0" onclick="loadPresetTemplate(${idx}, 'user')"></div>
@@ -271,12 +271,13 @@ function initGrapesJS() {
     });
 }
 
-function clearCanvas() {
-    if(confirm("Are you sure you want to clear the entire canvas? This cannot be undone.")) {
+function newCanvas() {
+    if(confirm("Start a new blank canvas? Current unsaved changes will be lost.")) {
         if(editor) {
             editor.DomComponents.clear();
             editor.CssComposer.clear();
-            showToast("Canvas cleared.");
+            document.getElementById('custom-template-name').value = '';
+            showToast("New blank canvas created.");
         }
     }
 }
@@ -675,4 +676,71 @@ function removeFromQueue(email) {
             showToast(res.message, true);
         }
     });
+}
+
+// Preview Modal Logic
+function previewSelectedTemplate() {
+    const val = document.getElementById('send_template_select').value;
+    let htmlContent = "";
+    
+    if (val === 'editor') {
+        if (!editor) {
+            showToast("Editor is not ready.", true);
+            return;
+        }
+        const html = editor.getHtml();
+        const css = editor.getCss();
+        htmlContent = `<html><head><style>${css}</style></head><body style="padding:0; margin:0;">${html}</body></html>`;
+    } else if (val.startsWith('sys_')) {
+        const idx = parseInt(val.split('_')[1]);
+        htmlContent = presetTemplates[idx].html;
+    } else if (val.startsWith('user_')) {
+        const idx = parseInt(val.split('_')[1]);
+        htmlContent = userTemplates[idx].html;
+    }
+    
+    if (!htmlContent) {
+        showToast("No template content to preview.", true);
+        return;
+    }
+    
+    const iframe = document.getElementById('preview-iframe');
+    iframe.srcdoc = htmlContent;
+    
+    const modal = document.getElementById('preview-modal');
+    modal.classList.remove('hidden');
+    setTimeout(() => modal.classList.remove('opacity-0'), 10);
+}
+
+function closePreviewModal() {
+    const modal = document.getElementById('preview-modal');
+    modal.classList.add('opacity-0');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+        document.getElementById('preview-iframe').srcdoc = "";
+    }, 300);
+}
+
+// Easter Egg Logic
+let easterEggCount = 0;
+function triggerEasterEgg() {
+    easterEggCount++;
+    const heart = document.getElementById('easter-egg-heart');
+    
+    if (easterEggCount === 1) {
+        showToast("Hello @xavi52! 👋");
+        heart.classList.add('text-rose-500');
+        heart.classList.remove('text-rose-500/50');
+        heart.style.transform = 'scale(1.2)';
+    } else if (easterEggCount === 3) {
+        showToast("You're awesome! Keep building great things! 🚀");
+        heart.style.transform = 'scale(1.4)';
+    } else if (easterEggCount >= 5) {
+        showToast("💖 Easter Egg Unlocked! MailFlow Pro loves you! 💖");
+        heart.style.transform = 'scale(1.6) rotate(15deg)';
+        easterEggCount = 0;
+        setTimeout(() => {
+            heart.style.transform = 'scale(1) rotate(0deg)';
+        }, 1500);
+    }
 }
