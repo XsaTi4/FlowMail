@@ -9,22 +9,34 @@ import time
 import threading
 from email_validator import validate_email, EmailNotValidError
 
-DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
-SETTINGS_FILE = os.path.join(DATA_DIR, 'settings.json')
-TEMPLATE_FILE = os.path.join(DATA_DIR, 'template.html')
-USER_TEMPLATES_FILE = os.path.join(DATA_DIR, 'user_templates.json')
-STATE_FILE = os.path.join(DATA_DIR, 'state.json')
+import sys
 
-if not os.path.exists(DATA_DIR):
-    os.makedirs(DATA_DIR)
+def get_base_path():
+    if getattr(sys, 'frozen', False):
+        return sys._MEIPass
+    return os.path.dirname(os.path.abspath(__file__))
 
-TEMPLATES_DIR_PATH = os.path.join(DATA_DIR, 'templates')
-if not os.path.exists(TEMPLATES_DIR_PATH) or not os.listdir(TEMPLATES_DIR_PATH):
-    try:
-        from generate_templates import generate_system_templates
-        generate_system_templates(DATA_DIR)
-    except Exception as e:
-        print(f"Warning: Failed to auto-generate system templates: {e}")
+BASE_DIR = get_base_path()
+UI_DIR = os.path.join(BASE_DIR, 'ui')
+SYSTEM_TEMPLATES_DIR = os.path.join(BASE_DIR, 'data', 'templates')
+
+USER_DATA_DIR = os.path.join(os.path.expanduser('~'), '.flowmail_data')
+
+if not os.path.exists(USER_DATA_DIR):
+    os.makedirs(USER_DATA_DIR)
+
+SETTINGS_FILE = os.path.join(USER_DATA_DIR, 'settings.json')
+TEMPLATE_FILE = os.path.join(USER_DATA_DIR, 'template.html')
+USER_TEMPLATES_FILE = os.path.join(USER_DATA_DIR, 'user_templates.json')
+STATE_FILE = os.path.join(USER_DATA_DIR, 'state.json')
+
+if not getattr(sys, 'frozen', False):
+    if not os.path.exists(SYSTEM_TEMPLATES_DIR) or not os.listdir(SYSTEM_TEMPLATES_DIR):
+        try:
+            from generate_templates import generate_system_templates
+            generate_system_templates(os.path.join(BASE_DIR, 'data'))
+        except Exception as e:
+            print(f"Warning: Failed to auto-generate system templates: {e}")
 
 class Api:
     def __init__(self):
@@ -99,13 +111,12 @@ class Api:
         return {"success": False, "message": "Template not found."}
 
     def get_preset_templates(self):
-        templates_dir = os.path.join(DATA_DIR, 'templates')
         templates = []
-        if os.path.exists(templates_dir):
-            for filename in os.listdir(templates_dir):
+        if os.path.exists(SYSTEM_TEMPLATES_DIR):
+            for filename in sorted(os.listdir(SYSTEM_TEMPLATES_DIR)):
                 if filename.endswith('.json'):
                     try:
-                        with open(os.path.join(templates_dir, filename), 'r') as f:
+                        with open(os.path.join(SYSTEM_TEMPLATES_DIR, filename), 'r', encoding='utf-8') as f:
                             templates.append(json.load(f))
                     except Exception:
                         pass
@@ -354,6 +365,6 @@ class Api:
 
 if __name__ == '__main__':
     api = Api()
-    html_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ui', 'index.html')
-    window = webview.create_window('Email Sender application', html_path, js_api=api, width=1280, height=800, text_select=True)
+    html_path = os.path.join(UI_DIR, 'index.html')
+    window = webview.create_window('FlowMail', html_path, js_api=api, width=1280, height=800, text_select=True)
     webview.start(debug=True)
