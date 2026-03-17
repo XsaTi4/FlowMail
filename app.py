@@ -26,6 +26,7 @@ class Api:
         self.sent_emails = 0
         self.failed_emails = 0
         self.current_emails = []
+        self.email_statuses = {}
         self.subject = ""
         self.mode = "template"
         self.plain_text = ""
@@ -95,25 +96,28 @@ class Api:
     def parse_file(self, filepath):
         try:
             if filepath.endswith('.csv'):
-                df = pd.read_csv(filepath)
+                try:
+                    df = pd.read_csv(filepath)
+                except Exception:
+                    with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+                        text = f.read()
             elif filepath.endswith('.xlsx'):
                 df = pd.read_excel(filepath)
             else:
                 return {"success": False, "message": "Unsupported file format."}
 
-            # Find all emails across all columns
+            if 'df' in locals():
+                text = df.to_string(index=False)
+                
+            import re
             emails = []
-            for col in df.columns:
-                # Convert column to string
-                col_data = df[col].astype(str)
-                # Find valid emails using basic regex first to extract
-                extracted = col_data.str.extract(r'([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})').dropna()
-                for email_candidate in extracted[0]:
-                    try:
-                        valid = validate_email(email_candidate)
-                        emails.append(valid.email)
-                    except EmailNotValidError:
-                        continue
+            extracted = re.findall(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', text)
+            for email_candidate in extracted:
+                try:
+                    valid = validate_email(email_candidate)
+                    emails.append(valid.email)
+                except EmailNotValidError:
+                    continue
             
             emails = list(set(emails)) # Unique emails
             return {"success": True, "emails": emails, "count": len(emails)}
@@ -127,6 +131,13 @@ class Api:
             return self.parse_file(result[0])
         return {"success": False, "message": "No file selected."}
         
+    def get_queue(self):
+        return {
+            "emails": self.current_emails,
+            "statuses": self.email_statuses,
+            "last_index": self.last_index
+        }
+        
     def get_state(self):
         if os.path.exists(STATE_FILE):
             try:
@@ -134,11 +145,12 @@ class Api:
                     return json.load(f)
             except Exception:
                 pass
-        return {"current_emails": [], "last_index": 0, "subject": "", "mode": "template", "plain_text": ""}
+        return {"current_emails": [], "email_statuses": {}, "last_index": 0, "subject": "", "mode": "template", "plain_text": ""}
 
     def save_state(self):
         state = {
             "current_emails": self.current_emails,
+            "email_statuses": getattr(self, "email_statuses", {}),
             "last_index": self.last_index,
             "subject": self.subject,
             "mode": self.mode,
@@ -150,7 +162,7 @@ class Api:
         with open(STATE_FILE, 'w', encoding='utf-8') as f:
             json.dump(state, f, indent=4)
 
-    def start_sending(self, emails, subject, mode="template", plain_text="", safety_limit=0, resume=False):
+    def start_sending(self, emails, subject, mode="template", plain_text="", template_html="", safety_limit=0, resume=False):
         if self.sending:
             return {"success": False, "message": "Already sending emails."}
             
@@ -159,7 +171,10 @@ class Api:
         
         if not settings.get("smtp_server") or not settings.get("smtp_user"):
             return {"success": False, "message": "SMTP settings are incomplete."}
-        if mode == "template" and not template:
+        
+        actual_template = template_html if template_html else template
+        
+        if mode == "template" and not actual_template:
             return {"success": False, "message": "Email template is empty."}
         if mode == "text" and not plain_text.strip():
             return {"success": False, "message": "Plain text is empty."}
@@ -178,20 +193,23 @@ class Api:
             self.last_index = 0
             self.sent_emails = 0
             self.failed_emails = 0
+            self.email_statuses = {}
         else:
             state = self.get_state()
             if state and "last_index" in state and emails == state.get("current_emails"):
                 self.last_index = state.get("last_index", 0)
                 self.sent_emails = state.get("sent_emails", 0)
                 self.failed_emails = state.get("failed_emails", 0)
+                self.email_statuses = state.get("email_statuses", {})
             else:
                 self.last_index = 0
                 self.sent_emails = 0
                 self.failed_emails = 0
+                self.email_statuses = {}
                 
         self.save_state()
         
-        thread = threading.Thread(target=self._send_loop, args=(settings, template, safety_limit))
+        thread = threading.Thread(target=self._send_loop, args=(settings, actual_template, safety_limit))
         thread.daemon = True
         thread.start()
         
@@ -249,9 +267,11 @@ class Api:
                     server.send_message(msg)
                     self.sent_emails += 1
                     session_sent += 1
+                    self.email_statuses[email] = "sent"
                 except Exception as e:
                     print(f"Failed to send to {email}: {e}")
                     self.failed_emails += 1
+                    self.email_statuses[email] = "failed"
                 
                 self.save_state()
                 

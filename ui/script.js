@@ -42,9 +42,11 @@ window.addEventListener('pywebviewready', function() {
     pywebview.api.get_preset_templates().then(templates => {
         presetTemplates = templates;
         renderTemplateGallery();
+        populateTemplateDropdown();
     });
     pywebview.api.get_user_templates().then(templates => {
         userTemplates = templates || [];
+        populateTemplateDropdown();
     });
     
     // Check for previous state
@@ -186,10 +188,33 @@ function initGrapesJS() {
         storageManager: false,
     });
 
+    // Auto-save silently
+    let autoSaveTimeout;
+    editor.on('change:changesCount', () => {
+        clearTimeout(autoSaveTimeout);
+        autoSaveTimeout = setTimeout(() => {
+            const htmlWithCss = editor.runCommand('gjs-get-inlined-html');
+            pywebview.api.save_template(htmlWithCss);
+        }, 1000);
+    });
+
     pywebview.api.get_template().then(html => {
         if(html && html.trim() !== '') {
             editor.setComponents(html);
         }
+    });
+}
+
+function populateTemplateDropdown() {
+    const select = document.getElementById('send_template_select');
+    if (!select) return;
+    select.innerHTML = '<option value="editor">🔥 Current Editor Layout</option>';
+    
+    presetTemplates.forEach((tpl, idx) => {
+        select.innerHTML += `<option value="sys_${idx}">[System] ${tpl.name}</option>`;
+    });
+    userTemplates.forEach((tpl, idx) => {
+        select.innerHTML += `<option value="user_${idx}">[My Templates] ${tpl.name}</option>`;
     });
 }
 
@@ -299,15 +324,18 @@ function setSendMode(mode) {
     const btnTpl = document.getElementById('mode-template');
     const btnTxt = document.getElementById('mode-text');
     const txtConfig = document.getElementById('plain-text-config');
+    const tplConfig = document.getElementById('template-select-config');
 
     if(mode === 'template') {
         btnTpl.className = 'flex-1 py-2 text-sm font-medium rounded-md bg-slate-700 text-white shadow transition-all';
         btnTxt.className = 'flex-1 py-2 text-sm font-medium rounded-md text-slate-400 hover:text-white transition-all';
         txtConfig.classList.add('hidden');
+        tplConfig.classList.remove('hidden');
     } else {
         btnTxt.className = 'flex-1 py-2 text-sm font-medium rounded-md bg-slate-700 text-white shadow transition-all';
         btnTpl.className = 'flex-1 py-2 text-sm font-medium rounded-md text-slate-400 hover:text-white transition-all';
         txtConfig.classList.remove('hidden');
+        tplConfig.classList.add('hidden');
     }
 }
 
@@ -325,7 +353,21 @@ function startSending(resume = false) {
         return;
     }
 
-    pywebview.api.start_sending(loadedEmails, subject, currentSendMode, plainText, limitInput, resume).then(res => {
+    let selectedHtml = "";
+    if (currentSendMode === 'template') {
+        const sel = document.getElementById('send_template_select').value;
+        if (sel === 'editor') {
+            if (editor) selectedHtml = editor.runCommand('gjs-get-inlined-html');
+        } else if (sel.startsWith('sys_')) {
+            let idx = parseInt(sel.split('_')[1]);
+            selectedHtml = presetTemplates[idx].html;
+        } else if (sel.startsWith('user_')) {
+            let idx = parseInt(sel.split('_')[1]);
+            selectedHtml = userTemplates[idx].html;
+        }
+    }
+
+    pywebview.api.start_sending(loadedEmails, subject, currentSendMode, plainText, selectedHtml, limitInput, resume).then(res => {
         if(res.success) {
             document.getElementById('btn-send').classList.add('hidden');
             document.getElementById('btn-resume').classList.add('hidden');
@@ -428,4 +470,63 @@ function updateProgress() {
             }
         }
     });
+}
+
+// Queue Modal functions
+function openQueueModal() {
+    pywebview.api.get_queue().then(q => {
+        const modal = document.getElementById('queue-modal');
+        const list = document.getElementById('queue-list');
+        list.innerHTML = '';
+        
+        let pendingCount = 0;
+        let sentCount = 0;
+        let failedCount = 0;
+        
+        if (q.emails.length === 0) {
+            list.innerHTML = '<div class="text-sm text-slate-500 text-center mt-6">The queue is currently empty.</div>';
+        }
+        
+        q.emails.forEach((email, idx) => {
+            const row = document.createElement('div');
+            row.className = 'flex justify-between items-center bg-slate-800/50 hover:bg-slate-700/50 p-3 rounded-lg border border-slate-700/50 mb-2 transition-colors';
+            
+            let statusBadge = '';
+            const status = q.statuses ? q.statuses[email] : null;
+            
+            if (status === 'sent') {
+                sentCount++;
+                row.classList.add('border-l-2', 'border-l-emerald-500');
+                statusBadge = '<span class="text-xs font-medium bg-emerald-500/10 text-emerald-400 px-2 py-1 rounded-full"><i class="fa-solid fa-check mr-1"></i> Sent</span>';
+            } else if (status === 'failed') {
+                failedCount++;
+                row.classList.add('border-l-2', 'border-l-rose-500');
+                statusBadge = '<span class="text-xs font-medium bg-rose-500/10 text-rose-400 px-2 py-1 rounded-full"><i class="fa-solid fa-xmark mr-1"></i> Failed</span>';
+            } else {
+                pendingCount++;
+                row.classList.add('border-l-2', 'border-l-slate-500');
+                statusBadge = '<span class="text-xs font-medium bg-slate-500/10 text-slate-400 px-2 py-1 rounded-full"><i class="fa-solid fa-clock mr-1"></i> Pending</span>';
+            }
+            
+            row.innerHTML = `
+                <div class="flex items-center space-x-3">
+                    <span class="text-slate-500 text-xs w-6 text-right">${idx + 1}.</span>
+                    <span class="text-slate-200 text-sm font-medium">${email}</span>
+                </div>
+                <div>${statusBadge}</div>
+            `;
+            list.appendChild(row);
+        });
+        
+        document.getElementById('queue-total-label').innerText = `Sent: ${sentCount} | Pending: ${pendingCount} | Failed: ${failedCount}`;
+        
+        modal.classList.remove('hidden');
+        setTimeout(() => modal.classList.remove('opacity-0'), 10);
+    });
+}
+
+function closeQueueModal() {
+    const modal = document.getElementById('queue-modal');
+    modal.classList.add('opacity-0');
+    setTimeout(() => modal.classList.add('hidden'), 300);
 }
