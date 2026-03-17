@@ -165,7 +165,11 @@ function saveUserTemplate() {
         if(res.success) {
             showToast(res.message);
             nameInput.value = '';
-            pywebview.api.get_user_templates().then(t => { userTemplates = t || []; renderTemplateGallery(); });
+            pywebview.api.get_user_templates().then(t => { 
+                userTemplates = t || []; 
+                renderTemplateGallery(); 
+                populateTemplateDropdown();
+            });
         } else {
             showToast(res.message, true);
         }
@@ -238,6 +242,7 @@ function loadSettings() {
             document.getElementById('from_name').value = settings.from_name || '';
             document.getElementById('set_delay').value = settings.delay || 1.0;
             document.getElementById('set_jitter').checked = settings.jitter || false;
+            document.getElementById('disable_safety').checked = settings.disable_safety || false;
         }
     });
 }
@@ -251,7 +256,8 @@ function saveSettings() {
         from_email: document.getElementById('from_email').value,
         from_name: document.getElementById('from_name').value,
         delay: parseFloat(document.getElementById('set_delay').value) || 1.0,
-        jitter: document.getElementById('set_jitter').checked
+        jitter: document.getElementById('set_jitter').checked,
+        disable_safety: document.getElementById('disable_safety').checked
     };
     
     pywebview.api.save_settings(settings).then(res => {
@@ -298,6 +304,30 @@ function clearRecipients() {
     loadedEmails = [];
     updateRecipientCount();
     showToast("Recipient list cleared.");
+}
+
+function clearCache() {
+    if(confirm("Are you sure you want to wipe all session data and cache?")) {
+        pywebview.api.clear_cache().then(res => {
+            if(res.success) {
+                loadedEmails = [];
+                updateRecipientCount();
+                
+                document.getElementById('prog-bar').style.width = '0%';
+                document.getElementById('prog-sent-num').innerText = '0';
+                document.getElementById('prog-failed-num').innerText = '0';
+                document.getElementById('prog-sent').innerText = '0';
+                document.getElementById('prog-total').innerText = '0';
+                
+                document.getElementById('btn-recovery').classList.add('hidden');
+                document.getElementById('btn-recovery').classList.remove('flex');
+                
+                showToast(res.message);
+            } else {
+                showToast(res.message, true);
+            }
+        });
+    }
 }
 
 function checkRisk() {
@@ -457,16 +487,22 @@ function updateProgress() {
             document.getElementById('btn-stop').classList.add('hidden');
             document.getElementById('btn-stop').classList.remove('flex');
             
-            if (res.paused) {
-                document.getElementById('btn-send').classList.add('hidden');
-                document.getElementById('btn-resume').classList.remove('hidden');
-                document.getElementById('btn-resume').classList.add('flex');
-                showToast("Sending Paused (Safety Limit Reached)");
-            } else if(total > 0 && (sent + failed) === total) {
+            if (sent + failed >= total && total > 0) {
+                // Completed
                 document.getElementById('btn-send').classList.remove('hidden');
+                document.getElementById('btn-send').classList.add('flex');
                 document.getElementById('btn-resume').classList.add('hidden');
                 document.getElementById('btn-resume').classList.remove('flex');
                 showToast("Campaign finished!");
+            } else {
+                // Stopped or paused
+                document.getElementById('btn-send').classList.add('hidden');
+                document.getElementById('btn-send').classList.remove('flex');
+                document.getElementById('btn-resume').classList.remove('hidden');
+                document.getElementById('btn-resume').classList.add('flex');
+                if (res.paused) {
+                    showToast("Sending Paused (Safety Limit Reached)");
+                }
             }
         }
     });
@@ -474,7 +510,7 @@ function updateProgress() {
 
 // Queue Modal functions
 function openQueueModal() {
-    pywebview.api.get_queue().then(q => {
+    pywebview.api.get_queue(loadedEmails).then(q => {
         const modal = document.getElementById('queue-modal');
         const list = document.getElementById('queue-list');
         list.innerHTML = '';
@@ -505,7 +541,10 @@ function openQueueModal() {
             } else {
                 pendingCount++;
                 row.classList.add('border-l-2', 'border-l-slate-500');
-                statusBadge = '<span class="text-xs font-medium bg-slate-500/10 text-slate-400 px-2 py-1 rounded-full"><i class="fa-solid fa-clock mr-1"></i> Pending</span>';
+                statusBadge = `
+                    <button onclick="removeFromQueue('${email}')" class="text-rose-400 hover:text-rose-300 mr-3 text-sm focus:outline-none" title="Remove from queue"><i class="fa-solid fa-trash"></i></button>
+                    <span class="text-xs font-medium bg-slate-500/10 text-slate-400 px-2 py-1 rounded-full"><i class="fa-solid fa-clock mr-1"></i> Pending</span>
+                `;
             }
             
             row.innerHTML = `
@@ -529,4 +568,17 @@ function closeQueueModal() {
     const modal = document.getElementById('queue-modal');
     modal.classList.add('opacity-0');
     setTimeout(() => modal.classList.add('hidden'), 300);
+}
+
+function removeFromQueue(email) {
+    pywebview.api.remove_from_queue(email).then(res => {
+        if(res.success) {
+            loadedEmails = loadedEmails.filter(e => e !== email);
+            updateRecipientCount();
+            openQueueModal(); // refresh UI
+            showToast(res.message);
+        } else {
+            showToast(res.message, true);
+        }
+    });
 }

@@ -42,7 +42,7 @@ class Api:
                     return settings
             except Exception:
                 pass
-        return {"smtp_server": "", "smtp_port": "587", "smtp_user": "", "smtp_password": "", "from_email": "", "from_name": "", "delay": 1.0, "jitter": False}
+        return {"smtp_server": "", "smtp_port": "587", "smtp_user": "", "smtp_password": "", "from_email": "", "from_name": "", "delay": 1.0, "jitter": False, "disable_safety": False}
 
     def save_settings(self, settings):
         with open(SETTINGS_FILE, 'w') as f:
@@ -131,13 +131,50 @@ class Api:
             return self.parse_file(result[0])
         return {"success": False, "message": "No file selected."}
         
-    def get_queue(self):
+    def get_queue(self, new_emails=None):
+        if new_emails is not None:
+            # For pre-launch viewing
+            emails_to_show = new_emails
+            statuses = {}
+        else:
+            emails_to_show = getattr(self, "current_emails", [])
+            statuses = getattr(self, "email_statuses", {})
+            
         return {
-            "emails": self.current_emails,
-            "statuses": self.email_statuses,
-            "last_index": self.last_index
+            "emails": emails_to_show,
+            "statuses": statuses,
+            "last_index": getattr(self, "last_index", 0)
         }
         
+    def clear_cache(self):
+        try:
+            if os.path.exists(STATE_FILE):
+                os.remove(STATE_FILE)
+            self.current_emails = []
+            self.email_statuses = {}
+            self.last_index = 0
+            self.sent_emails = 0
+            self.failed_emails = 0
+            self.total_emails = 0
+            return {"success": True, "message": "App cache and queue completely cleared."}
+        except Exception as e:
+            return {"success": False, "message": f"Could not clear cache: {e}"}
+
+    def remove_from_queue(self, email):
+        if self.sending:
+            return {"success": False, "message": "Pause sending to modify queue."}
+        if email in self.current_emails:
+            idx = self.current_emails.index(email)
+            self.current_emails.remove(email)
+            if idx < self.last_index:
+                self.last_index -= 1
+            self.total_emails = len(self.current_emails)
+            if email in getattr(self, "email_statuses", {}):
+                del self.email_statuses[email]
+            self.save_state()
+            return {"success": True, "message": f"{email} removed."}
+        return {"success": False, "message": "Email not found."}
+
     def get_state(self):
         if os.path.exists(STATE_FILE):
             try:
@@ -183,29 +220,28 @@ class Api:
             
         self.sending = True
         self.paused = False
-        self.current_emails = emails
         self.subject = subject
         self.mode = mode
         self.plain_text = plain_text
-        self.total_emails = len(emails)
         
         if not resume:
+            self.current_emails = emails
+            self.total_emails = len(emails)
             self.last_index = 0
             self.sent_emails = 0
             self.failed_emails = 0
             self.email_statuses = {}
         else:
             state = self.get_state()
-            if state and "last_index" in state and emails == state.get("current_emails"):
-                self.last_index = state.get("last_index", 0)
-                self.sent_emails = state.get("sent_emails", 0)
-                self.failed_emails = state.get("failed_emails", 0)
-                self.email_statuses = state.get("email_statuses", {})
-            else:
-                self.last_index = 0
-                self.sent_emails = 0
-                self.failed_emails = 0
-                self.email_statuses = {}
+            self.last_index = state.get("last_index", 0)
+            self.sent_emails = state.get("sent_emails", 0)
+            self.failed_emails = state.get("failed_emails", 0)
+            self.email_statuses = state.get("email_statuses", {})
+            
+            saved_emails = state.get("current_emails", [])
+            new_emails = [e for e in emails if e not in saved_emails]
+            self.current_emails = saved_emails + new_emails
+            self.total_emails = len(self.current_emails)
                 
         self.save_state()
         
@@ -240,6 +276,10 @@ class Api:
             server.login(settings["smtp_user"], settings["smtp_password"])
             
             delay = float(settings.get("delay", 1.0))
+            if settings.get("disable_safety", False):
+                delay = 0.0
+                safety_limit = 0
+                
             from_addr = f'{settings.get("from_name", "")} <{settings["from_email"]}>' if settings.get("from_name") else settings["from_email"]
             
             session_sent = 0
@@ -249,7 +289,6 @@ class Api:
                     break
                     
                 email = self.current_emails[i]
-                self.last_index = i
                 
                 try:
                     msg = MIMEMultipart('alternative')
@@ -273,6 +312,7 @@ class Api:
                     self.failed_emails += 1
                     self.email_statuses[email] = "failed"
                 
+                self.last_index = i + 1
                 self.save_state()
                 
                 if safety_limit > 0 and session_sent >= safety_limit:

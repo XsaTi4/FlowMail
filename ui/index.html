@@ -88,7 +88,8 @@
                             <span>Total Recipients: <span id="recipient-count" class="font-bold text-white text-lg ml-1">0</span></span>
                             <div class="space-x-2">
                                 <button onclick="openQueueModal()" class="text-xs text-indigo-400 hover:text-indigo-300 font-medium bg-indigo-500/10 px-2 py-1 rounded border border-indigo-500/20 transition-colors"><i class="fa-solid fa-list mr-1"></i> View Queue</button>
-                                <button onclick="clearRecipients()" class="text-xs text-rose-400 hover:text-rose-300 font-medium bg-rose-500/10 px-2 py-1 rounded border border-rose-500/20 transition-colors" title="Clear list"><i class="fa-solid fa-trash mr-1"></i> Clear</button>
+                                <button onclick="clearRecipients()" class="text-xs text-rose-400 hover:text-rose-300 font-medium bg-rose-500/10 px-2 py-1 rounded border border-rose-500/20 transition-colors" title="Clear list"><i class="fa-solid fa-eraser mr-1"></i> Clear Selection</button>
+                                <button onclick="clearCache()" class="text-xs text-rose-500 hover:text-rose-400 font-medium bg-rose-900/20 px-2 py-1 rounded border border-rose-900/50 transition-colors" title="Wipe cache completely"><i class="fa-solid fa-trash mr-1"></i> Wipe Cache</button>
                             </div>
                         </div>
                     </div>
@@ -211,18 +212,26 @@
                                 <label class="block text-sm font-medium text-slate-400 mb-1">From Name (Optional)</label>
                                 <input type="text" id="from_name" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 transition-colors" placeholder="Jane Doe">
                             </div>
-                                <div class="md:col-span-2">
-                                    <label class="block text-sm font-medium text-slate-400 mb-1">Delay Between Emails (seconds)</label>
-                                    <div class="flex items-center space-x-3">
-                                        <input type="number" id="set_delay" value="1.0" step="0.5" class="w-32 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 transition-colors">
-                                        <div class="flex items-center flex-1 ml-4 bg-slate-800 p-2 rounded-lg border border-slate-700">
-                                            <input type="checkbox" id="set_jitter" class="w-4 h-4 text-emerald-500 bg-slate-900 border-slate-600 rounded">
-                                            <label for="set_jitter" class="ml-2 text-sm text-slate-300 font-medium cursor-pointer">
-                                                <i class="fa-solid fa-wand-magic-sparkles text-emerald-400 mr-1"></i> Anti-ban Jitter (randomize delay exactly like human behavior)
-                                            </label>
+                                <div class="md:col-span-2 space-y-3">
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-400 mb-1">Delay Between Emails (seconds)</label>
+                                        <div class="flex items-center space-x-3">
+                                            <input type="number" id="set_delay" value="1.0" step="0.5" class="w-32 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 transition-colors">
+                                            <div class="flex items-center flex-1 ml-4 bg-slate-800 p-2 rounded-lg border border-slate-700">
+                                                <input type="checkbox" id="set_jitter" class="w-4 h-4 text-emerald-500 bg-slate-900 border-slate-600 rounded cursor-pointer">
+                                                <label for="set_jitter" class="ml-2 text-sm text-slate-300 font-medium cursor-pointer flex-1">
+                                                    <i class="fa-solid fa-wand-magic-sparkles text-emerald-400 mr-1"></i> Anti-ban Jitter (randomize delay exactly like human behavior)
+                                                </label>
+                                            </div>
                                         </div>
+                                        <p class="text-xs text-slate-500 mt-1">Slightly randomizes the delay (e.g., ±0.3s) so the SMTP server cannot detect automated timed bursting.</p>
                                     </div>
-                                    <p class="text-xs text-slate-500 mt-1">Slightly randomizes the delay (e.g., ±0.3s) so the SMTP server cannot detect automated timed bursting.</p>
+                                    <div class="flex items-center bg-rose-900/10 p-2 rounded-lg border border-rose-500/20">
+                                        <input type="checkbox" id="disable_safety" class="w-4 h-4 text-rose-500 bg-slate-900 border-slate-600 rounded cursor-pointer">
+                                        <label for="disable_safety" class="ml-2 text-sm text-rose-300 font-medium cursor-pointer">
+                                            <i class="fa-solid fa-triangle-exclamation mr-1"></i> Disable all safety limits (Removes all delays! Highly risky!)
+                                        </label>
+                                    </div>
                                 </div>
                         </div>
 
