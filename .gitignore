@@ -20,12 +20,9 @@ venv.bak/
 target/
 
 # Application Data
-data/
 
-# Build artifacts and guides
-build_guide.md
-icon.ico
-*.spec
+
+# Build artifacts
 build/
 dist/
 
